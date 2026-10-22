@@ -15,6 +15,19 @@ While this crate's API is purely blocking, it internally spawns asynchronous tas
 
 The Android implementation of this adapter currently only works with [GameActivity](https://developer.android.com/games/agdk/game-activity), which is one of the two activity implementations that winit currently supports.
 
+## winit 0.31 prototype
+
+This branch uses winit 0.31 and a thread-safe event callback instead of a typed
+`EventLoopProxy`. The callback may run on an accessibility thread. Queue its
+events and wake the application event loop, then handle the queued events in
+`proxy_wake_up`; both examples demonstrate this. Raw-window-handle 0.5 is no
+longer supported by this adapter because winit 0.31 requires version 0.6.
+
+This is a prototype for the implementation proposal in
+[issue 654](https://github.com/AccessKit/accesskit/issues/654). Linux and Windows
+cross-compilation are covered locally; Apple and Android runtime testing remains
+necessary before an upstream pull request.
+
 ## Examples
 
 The `examples/` directory contains two runnable examples:

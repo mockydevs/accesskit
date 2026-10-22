@@ -12,8 +12,8 @@ pub struct Adapter {
 
 impl Adapter {
     pub fn new(
-        _event_loop: &ActiveEventLoop,
-        _window: &Window,
+        _event_loop: &dyn ActiveEventLoop,
+        _window: &dyn Window,
         activation_handler: impl 'static + ActivationHandler + Send,
         action_handler: impl 'static + ActionHandler + Send,
         deactivation_handler: impl 'static + DeactivationHandler + Send,
@@ -34,34 +34,34 @@ impl Adapter {
         self.adapter.update_window_focus_state(is_focused);
     }
 
-    pub fn process_event(&mut self, window: &Window, event: &WindowEvent) {
+    pub fn process_event(&mut self, window: &dyn Window, event: &WindowEvent) {
         match event {
             WindowEvent::Moved(outer_position) => {
                 let outer_position: (_, _) = outer_position.cast::<f64>().into();
                 let outer_size: (_, _) = window.outer_size().cast::<f64>().into();
-                let inner_position: (_, _) = window
-                    .inner_position()
-                    .unwrap_or_default()
-                    .cast::<f64>()
-                    .into();
-                let inner_size: (_, _) = window.inner_size().cast::<f64>().into();
+                let offset = window.surface_position();
+                let inner_position = (
+                    outer_position.0 + f64::from(offset.x),
+                    outer_position.1 + f64::from(offset.y),
+                );
+                let inner_size: (_, _) = window.surface_size().cast::<f64>().into();
                 self.set_root_window_bounds(
                     Rect::from_origin_size(outer_position, outer_size),
                     Rect::from_origin_size(inner_position, inner_size),
                 )
             }
-            WindowEvent::Resized(inner_size) => {
+            WindowEvent::SurfaceResized(inner_size) => {
                 let outer_position: (_, _) = window
                     .outer_position()
                     .unwrap_or_default()
                     .cast::<f64>()
                     .into();
                 let outer_size: (_, _) = window.outer_size().cast::<f64>().into();
-                let inner_position: (_, _) = window
-                    .inner_position()
-                    .unwrap_or_default()
-                    .cast::<f64>()
-                    .into();
+                let offset = window.surface_position();
+                let inner_position = (
+                    outer_position.0 + f64::from(offset.x),
+                    outer_position.1 + f64::from(offset.y),
+                );
                 let inner_size: (_, _) = inner_size.cast::<f64>().into();
                 self.set_root_window_bounds(
                     Rect::from_origin_size(outer_position, outer_size),
