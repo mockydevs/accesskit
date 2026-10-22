@@ -38,6 +38,8 @@ accesskit_android = { version = "0.7.2", path = "../android", optional = true, f
 
 [dev-dependencies.winit]
 version = "=0.31.0-beta.3"
+git = "https://github.com/mockydevs/winit"
+rev = "4c38d2fe338245fb7a20602466cab94973313792"
 default-features = false
 features = ["x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita"]
 
