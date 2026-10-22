@@ -18,8 +18,8 @@ pub struct Adapter {
 
 impl Adapter {
     pub fn new(
-        event_loop: &ActiveEventLoop,
-        _window: &Window,
+        event_loop: &dyn ActiveEventLoop,
+        _window: &dyn Window,
         activation_handler: impl 'static + ActivationHandler + Send,
         action_handler: impl 'static + ActionHandler + Send,
         _deactivation_handler: impl 'static + DeactivationHandler,
@@ -45,5 +45,5 @@ impl Adapter {
         self.adapter.update_if_active(updater);
     }
 
-    pub fn process_event(&mut self, _window: &Window, _event: &WindowEvent) {}
+    pub fn process_event(&mut self, _window: &dyn Window, _event: &WindowEvent) {}
 }

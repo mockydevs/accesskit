@@ -16,8 +16,8 @@ pub struct Adapter {
 
 impl Adapter {
     pub fn new(
-        _event_loop: &ActiveEventLoop,
-        window: &Window,
+        _event_loop: &dyn ActiveEventLoop,
+        window: &dyn Window,
         activation_handler: impl 'static + ActivationHandler,
         action_handler: impl 'static + ActionHandler + Send,
         _deactivation_handler: impl 'static + DeactivationHandler,
@@ -45,5 +45,5 @@ impl Adapter {
         }
     }
 
-    pub fn process_event(&mut self, _window: &Window, _event: &WindowEvent) {}
+    pub fn process_event(&mut self, _window: &dyn Window, _event: &WindowEvent) {}
 }

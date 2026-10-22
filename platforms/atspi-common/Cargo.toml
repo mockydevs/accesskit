@@ -15,7 +15,7 @@ rust-version.workspace = true
 simplified-api = []
 
 [dependencies]
-accesskit = { version = "0.24.0", path = "../../common" }
+accesskit = { version = "0.24.0" }
 accesskit_consumer = { version = "0.35.0", path = "../../consumer" }
 atspi-common = { version = "0.13", default-features = false }
 phf = { version = "0.13.1", features = ["macros"] }

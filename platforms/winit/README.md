@@ -14,3 +14,12 @@ While this crate's API is purely blocking, it internally spawns asynchronous tas
 ## Android activity compatibility
 
 The Android implementation of this adapter currently only works with [GameActivity](https://developer.android.com/games/agdk/game-activity), which is one of the two activity implementations that winit currently supports.
+
+## Downstream compatibility prototype
+
+This fork branch keeps AccessKit 0.24-compatible consumers working while testing
+egui 0.36 with winit 0.31. It is not an upstream PR or a supported prerelease.
+Only the default rwh_06 path is validated; the old optional rwh_05 path is not
+supported by winit 0.31. Linux application tests and a Windows cross-check passed
+in the downstream integration. Apple and Android runtime validation is pending.
+The current-main callback proposal is on prototype/winit-031-callback instead.

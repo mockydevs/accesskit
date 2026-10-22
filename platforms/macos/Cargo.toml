@@ -15,7 +15,7 @@ rust-version.workspace = true
 default-target = "x86_64-apple-darwin"
 
 [dependencies]
-accesskit = { version = "0.24.0", path = "../../common" }
+accesskit = { version = "0.24.0" }
 accesskit_consumer = { version = "0.35.0", path = "../../consumer" }
 hashbrown.workspace = true
 objc2 = "0.5.1"

@@ -52,7 +52,7 @@ compile_error!(
 use accesskit::{ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, TreeUpdate};
 use winit::{
     event::WindowEvent as WinitWindowEvent,
-    event_loop::{ActiveEventLoop, EventLoopProxy},
+    event_loop::ActiveEventLoop,
     window::{Window, WindowId},
 };
 
@@ -78,49 +78,49 @@ pub enum WindowEvent {
     AccessibilityDeactivated,
 }
 
-struct WinitActivationHandler<T: From<Event> + Send + 'static> {
+struct WinitActivationHandler<F: Fn(Event) + Send + Sync + 'static> {
     window_id: WindowId,
-    proxy: EventLoopProxy<T>,
+    proxy: std::sync::Arc<F>,
 }
 
-impl<T: From<Event> + Send + 'static> ActivationHandler for WinitActivationHandler<T> {
+impl<F: Fn(Event) + Send + Sync + 'static> ActivationHandler for WinitActivationHandler<F> {
     fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
         let event = Event {
             window_id: self.window_id,
             window_event: WindowEvent::InitialTreeRequested,
         };
-        self.proxy.send_event(event.into()).ok();
+        (self.proxy)(event);
         None
     }
 }
 
-struct WinitActionHandler<T: From<Event> + Send + 'static> {
+struct WinitActionHandler<F: Fn(Event) + Send + Sync + 'static> {
     window_id: WindowId,
-    proxy: EventLoopProxy<T>,
+    proxy: std::sync::Arc<F>,
 }
 
-impl<T: From<Event> + Send + 'static> ActionHandler for WinitActionHandler<T> {
+impl<F: Fn(Event) + Send + Sync + 'static> ActionHandler for WinitActionHandler<F> {
     fn do_action(&mut self, request: ActionRequest) {
         let event = Event {
             window_id: self.window_id,
             window_event: WindowEvent::ActionRequested(request),
         };
-        self.proxy.send_event(event.into()).ok();
+        (self.proxy)(event);
     }
 }
 
-struct WinitDeactivationHandler<T: From<Event> + Send + 'static> {
+struct WinitDeactivationHandler<F: Fn(Event) + Send + Sync + 'static> {
     window_id: WindowId,
-    proxy: EventLoopProxy<T>,
+    proxy: std::sync::Arc<F>,
 }
 
-impl<T: From<Event> + Send + 'static> DeactivationHandler for WinitDeactivationHandler<T> {
+impl<F: Fn(Event) + Send + Sync + 'static> DeactivationHandler for WinitDeactivationHandler<F> {
     fn deactivate_accessibility(&mut self) {
         let event = Event {
             window_id: self.window_id,
             window_event: WindowEvent::AccessibilityDeactivated,
         };
-        self.proxy.send_event(event.into()).ok();
+        (self.proxy)(event);
     }
 }
 
@@ -134,7 +134,7 @@ impl Adapter {
     /// use [`winit::window::WindowAttributes::with_visible`] to make the window
     /// initially invisible, then create the adapter, then show the window.
     ///
-    /// This constructor uses a winit event loop proxy to deliver AccessKit
+    /// This constructor uses a thread-safe event callback to deliver AccessKit
     /// events to the main event loop. The primary disadvantage of this approach
     /// is that it's not possible to synchronously return an initial tree
     /// in response to the [`WindowEvent::InitialTreeRequested`] event,
@@ -146,11 +146,12 @@ impl Adapter {
     /// # Panics
     ///
     /// Panics if the window is already visible.
-    pub fn with_event_loop_proxy<T: From<Event> + Send + 'static>(
-        event_loop: &ActiveEventLoop,
-        window: &Window,
-        proxy: EventLoopProxy<T>,
+    pub fn with_event_handler<F: Fn(Event) + Send + Sync + 'static>(
+        event_loop: &dyn ActiveEventLoop,
+        window: &dyn Window,
+        proxy: F,
     ) -> Self {
+        let proxy = std::sync::Arc::new(proxy);
         let window_id = window.id();
         let activation_handler = WinitActivationHandler {
             window_id,
@@ -176,7 +177,7 @@ impl Adapter {
     /// initially invisible, then create the adapter, then show the window.
     ///
     /// Use this if you want to provide your own AccessKit handler callbacks
-    /// rather than dispatching requests through the winit event loop. This is
+    /// rather than dispatching requests through the application event loop. This is
     /// especially useful for the activation handler, because depending on
     /// your application's architecture, implementing the handler directly may
     /// allow you to return an initial tree synchronously, rather than requiring
@@ -188,8 +189,8 @@ impl Adapter {
     ///
     /// Panics if the window is already visible.
     pub fn with_direct_handlers(
-        event_loop: &ActiveEventLoop,
-        window: &Window,
+        event_loop: &dyn ActiveEventLoop,
+        window: &dyn Window,
         activation_handler: impl 'static + ActivationHandler + Send,
         action_handler: impl 'static + ActionHandler + Send,
         deactivation_handler: impl 'static + DeactivationHandler + Send,
@@ -214,7 +215,7 @@ impl Adapter {
     /// initially invisible, then create the adapter, then show the window.
     ///
     /// This constructor provides a mix of the approaches used by
-    /// [`Adapter::with_event_loop_proxy`] and [`Adapter::with_direct_handlers`].
+    /// [`Adapter::with_event_handler`] and [`Adapter::with_direct_handlers`].
     /// It uses the event loop proxy for the action request and deactivation
     /// events, which can be handled asynchronously with no drawback,
     /// while using a direct, caller-provided activation handler that can
@@ -224,12 +225,13 @@ impl Adapter {
     /// # Panics
     ///
     /// Panics if the window is already visible.
-    pub fn with_mixed_handlers<T: From<Event> + Send + 'static>(
-        event_loop: &ActiveEventLoop,
-        window: &Window,
+    pub fn with_mixed_handlers<F: Fn(Event) + Send + Sync + 'static>(
+        event_loop: &dyn ActiveEventLoop,
+        window: &dyn Window,
         activation_handler: impl 'static + ActivationHandler + Send,
-        proxy: EventLoopProxy<T>,
+        proxy: F,
     ) -> Self {
+        let proxy = std::sync::Arc::new(proxy);
         let window_id = window.id();
         let action_handler = WinitActionHandler {
             window_id,
@@ -249,14 +251,14 @@ impl Adapter {
     ///
     /// This must be called whenever a new window event is received
     /// and before it is handled by the application.
-    pub fn process_event(&mut self, window: &Window, event: &WinitWindowEvent) {
+    pub fn process_event(&mut self, window: &dyn Window, event: &WinitWindowEvent) {
         self.inner.process_event(window, event);
     }
 
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
     /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
-    /// or if the caller created the adapter using [`EventLoopProxy`], then
+    /// or if the caller created the adapter using an event callback, then
     /// the [`TreeUpdate`] returned by the provided function must contain
     /// a full tree.
     pub fn update_if_active(&mut self, updater: impl FnOnce() -> TreeUpdate) {
